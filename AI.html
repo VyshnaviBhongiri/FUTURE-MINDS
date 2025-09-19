@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Doctor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .recharts-default-tooltip {
+            border-radius: 8px !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    // A simple mock for recharts and lucide-react as they are not available on CDN directly
+    // This is not a proper solution but a temporary workaround. For a real app, you would use a build system.
+    const Recharts = {
+        PieChart: props => <div className="text-center text-gray-400">PieChart Placeholder</div>,
+        Pie: props => <div className="text-center text-gray-400">Pie Placeholder</div>,
+        Cell: props => <div className="text-center text-gray-400">Cell Placeholder</div>,
+        ResponsiveContainer: props => <div className="text-center text-gray-400">ResponsiveContainer Placeholder</div>,
+        BarChart: props => <div className="text-center text-gray-400">BarChart Placeholder</div>,
+        Bar: props => <div className="text-center text-gray-400">Bar Placeholder</div>,
+        XAxis: props => <div className="text-center text-gray-400">XAxis Placeholder</div>,
+        YAxis: props => <div className="text-center text-gray-400">YAxis Placeholder</div>,
+        Tooltip: props => <div className="text-center text-gray-400">Tooltip Placeholder</div>,
+    };
+    const LucideReact = {
+        Search: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+        Plus: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+        TrendingUp: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>,
+        TrendingDown: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-trending-down"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/></svg>,
+        Award: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-award"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.896a6 6 0 0 0-6.954 0"/><path d="M12 17.5a2.5 2.5 0 0 1 0-5"/><path d="M18.88 16.516a1.5 1.5 0 1 0-2.822-1.026"/><path d="M5.942 16.516a1.5 1.5 0 1 0 2.822-1.026"/><path d="M12 22a10 10 0 1 0-10-10"/></svg>,
+        Download: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+        Heart: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.49 1.49-3.92 0-5.41s-3.92-1.49-5.41 0L12 11l-1.59-1.59c-1.49-1.49-3.92-1.49-5.41 0-1.49 1.49-1.49 3.92 0 5.41L12 19l7-7"/></svg>,
+        DollarSign: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-dollar-sign"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+        AlertTriangle: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-alert-triangle"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>,
+        CheckCircle: props => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.07"/><path d="M9 11l3 3L22 4"/></svg>,
+    };
+
+    const { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } = Recharts;
+    const { Search, Plus, TrendingUp, TrendingDown, Award, Download, Heart, DollarSign, AlertTriangle, CheckCircle } = LucideReact;
+
+    const PortfolioDoctor = () => {
+      const [portfolio, setPortfolio] = useState([]);
+      const [riskAppetite, setRiskAppetite] = useState(50);
+      const [searchTerm, setSearchTerm] = useState('');
+      const [selectedStock, setSelectedStock] = useState('');
+      const [quantity, setQuantity] = useState('');
+      const [advice, setAdvice] = useState([]);
+      const [usageStats, setUsageStats] = useState({
+        advicesGenerated: 0,
+        portfoliosAnalyzed: 0,
+        totalSpent: 0
+      });
+      const [liveData, setLiveData] = useState({});
+      const [showBilling, setShowBilling] = useState(false);
+      const [exportMessage, setExportMessage] = useState(null);
+      const [isLoading, setIsLoading] = useState(false); // New state for loading
+
+      // Mock stock data with sectors
+      const stockData = {
+        'TCS': { price: 3450, sector: 'IT', change: 1.2, trend: 'up' },
+        'Infosys': { price: 1580, sector: 'IT', change: -0.8, trend: 'down' },
+        'HDFC Bank': { price: 1620, sector: 'Banking', change: 2.1, trend: 'up' },
+        'ICICI Bank': { price: 980, sector: 'Banking', change: 1.5, trend: 'up' },
+        'Reliance': { price: 2420, sector: 'Energy', change: -1.2, trend: 'down' },
+        'ITC': { price: 420, sector: 'FMCG', change: 0.5, trend: 'up' },
+        'Wipro': { price: 410, sector: 'IT', change: 0.8, trend: 'up' },
+        'SBI': { price: 590, sector: 'Banking', change: -0.3, trend: 'down' },
+        'Bharti Airtel': { price: 1250, sector: 'Telecom', change: 1.8, trend: 'up' },
+        'ONGC': { price: 190, sector: 'Energy', change: -2.1, trend: 'down' },
+        'Maruti Suzuki': { price: 10200, sector: 'Auto', change: 1.4, trend: 'up' },
+        'Sun Pharma': { price: 1140, sector: 'Pharma', change: 0.9, trend: 'up' }
+      };
+
+      const filteredStocks = Object.keys(stockData).filter(stock =>
+        stock.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      // Simulate live data updates
+      useEffect(() => {
+        const interval = setInterval(() => {
+          const updatedData = { ...stockData };
+          Object.keys(updatedData).forEach(stock => {
+            const randomChange = (Math.random() - 0.5) * 0.4;
+            updatedData[stock].change = parseFloat((updatedData[stock].change + randomChange).toFixed(2));
+            updatedData[stock].trend = updatedData[stock].change >= 0 ? 'up' : 'down';
+          });
+          setLiveData(updatedData);
+        }, 10000);
+        
+        return () => clearInterval(interval);
+      }, []);
+
+      const currentStockData = Object.keys(liveData).length > 0 ? liveData : stockData;
+
+      const addToPortfolio = () => {
+        if (selectedStock && quantity) {
+          const newHolding = {
+            stock: selectedStock,
+            quantity: parseInt(quantity),
+            sector: currentStockData[selectedStock].sector,
+            price: currentStockData[selectedStock].price,
+            value: currentStockData[selectedStock].price * parseInt(quantity)
+          };
+          
+          setPortfolio([...portfolio, newHolding]);
+          setSelectedStock('');
+          setQuantity('');
+          setSearchTerm('');
+        }
+      };
+
+      const removeFromPortfolio = (index) => {
+        setPortfolio(portfolio.filter((_, i) => i !== index));
+      };
+
+      const calculatePortfolioMetrics = () => {
+        if (portfolio.length === 0) return null;
+
+        const totalValue = portfolio.reduce((sum, holding) => sum + holding.value, 0);
+        const sectorExposure = {};
+        
+        portfolio.forEach(holding => {
+          if (!sectorExposure[holding.sector]) {
+            sectorExposure[holding.sector] = 0;
+          }
+          sectorExposure[holding.sector] += holding.value;
+        });
+
+        const sectorData = Object.keys(sectorExposure).map(sector => ({
+          sector,
+          value: sectorExposure[sector],
+          percentage: ((sectorExposure[sector] / totalValue) * 100).toFixed(1)
+        }));
+
+        const maxExposure = Math.max(...Object.values(sectorExposure)) / totalValue * 100;
+        const diversificationScore = 100 - Math.max(0, maxExposure - 20);
+
+        return { totalValue, sectorData, diversificationScore, maxExposure };
+      };
+
+      const generateAdvice = async () => {
+        if (portfolio.length === 0) return;
+        setIsLoading(true);
+        setAdvice([]);
+
+        const metrics = calculatePortfolioMetrics();
+        const portfolioDataForAI = portfolio.map(holding => ({
+          ...holding,
+          currentPrice: currentStockData[holding.stock].price,
+          trend: currentStockData[holding.stock].trend,
+          change: currentStockData[holding.stock].change,
+        }));
+
+        const systemPrompt = "Act as a world-class financial analyst and investment advisor. Your goal is to provide a comprehensive, friendly, and easy-to-understand health checkup of a user's stock portfolio. Use emojis to make the advice more engaging. Include a summary of the portfolio's strengths and weaknesses. The advice should be professional, insightful, and actionable. Do not give financial advice. Do not ask for more information.";
+        const userQuery = `Analyze the following stock portfolio and provide a health report.
+        
+        Current Portfolio:
+        ${JSON.stringify(portfolioDataForAI, null, 2)}
+        
+        Overall Portfolio Metrics:
+        Total Value: ₹${metrics.totalValue.toLocaleString()}
+        Diversification Score: ${metrics.diversificationScore.toFixed(0)}/100
+        Maximum Sector Exposure: ${metrics.maxExposure.toFixed(1)}%
+        
+        User's Risk Appetite: ${riskAppetite}/100 (where 0 is very conservative and 100 is very aggressive).
+
+        Please provide a report covering diversification, risk alignment, and individual stock performance based on recent trends.
+        `;
+
+        const apiKey = ""
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        let retries = 0;
+        const maxRetries = 3;
+        const baseDelay = 1000;
+
+        const callApi = async () => {
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    tools: [{ "google_search": {} }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429 && retries < maxRetries) {
+                        retries++;
+                        const delay = baseDelay * Math.pow(2, retries - 1);
+                        await new Promise(res => setTimeout(res, delay));
+                        return callApi(); // Retry
+                    }
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    // Split the text into lines to display as separate advice points
+                    const newAdvice = text.split('\n').filter(line => line.trim() !== '').map(line => ({
+                        type: line.includes('✅') || line.includes('👍') ? 'success' :
+                              line.includes('⚠️') || line.includes('📉') ? 'warning' :
+                              'info',
+                        text: line.trim()
+                    }));
+                    setAdvice(newAdvice);
+                    setUsageStats(prev => ({
+                        advicesGenerated: prev.advicesGenerated + newAdvice.length,
+                        portfoliosAnalyzed: prev.portfoliosAnalyzed + 1,
+                        totalSpent: prev.totalSpent + 20 // Mock cost
+                    }));
+                } else {
+                    setAdvice([{ type: 'warning', text: "Sorry, I couldn't generate advice at this time. Please try again." }]);
+                }
+            } catch (error) {
+                console.error("Failed to generate advice:", error);
+                setAdvice([{ type: 'warning', text: "An error occurred. Please check the console." }]);
+            } finally {
+                setIsLoading(false);
+                setShowBilling(true);
+            }
+        };
+
+        callApi();
+      };
+
+      const getBadge = () => {
+        const { advicesGenerated, portfoliosAnalyzed } = usageStats;
+        if (portfoliosAnalyzed >= 10) return { emoji: '🏆', text: 'Portfolio Expert', color: 'text-yellow-600' };
+        if (portfoliosAnalyzed >= 5) return { emoji: '⭐', text: 'Smart Investor', color: 'text-blue-600' };
+        if (advicesGenerated >= 10) return { emoji: '🎯', text: 'Advice Seeker', color: 'text-green-600' };
+        if (portfoliosAnalyzed >= 1) return { emoji: '🌱', text: 'Smart Beginner', color: 'text-purple-600' };
+        return { emoji: '👶', text: 'Getting Started', color: 'text-gray-500' };
+      };
+
+      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
+      const metrics = calculatePortfolioMetrics();
+      const badge = getBadge();
+
+      const exportReport = () => {
+        if (!portfolio.length || !advice.length) {
+            setExportMessage("⚠️ Please generate a report first before exporting!");
+            setTimeout(() => setExportMessage(null), 5000);
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Add a title and header
+        doc.setFontSize(22);
+        doc.text("Portfolio Doctor Report", 10, 20);
+        doc.setFontSize(12);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 30);
+
+        // Add Portfolio Summary
+        doc.setFontSize(16);
+        doc.text("1. Portfolio Summary", 10, 50);
+        let yPos = 60;
+        doc.setFontSize(12);
+        portfolio.forEach((holding, index) => {
+            doc.text(`${holding.stock} (${holding.sector}): ${holding.quantity} shares @ ₹${holding.price.toLocaleString()} = ₹${holding.value.toLocaleString()}`, 15, yPos);
+            yPos += 10;
+        });
+
+        if (metrics) {
+            yPos += 5;
+            doc.setFontSize(14);
+            doc.text(`Total Portfolio Value: ₹${metrics.totalValue.toLocaleString()}`, 15, yPos);
+            yPos += 10;
+            doc.text(`Diversification Score: ${metrics.diversificationScore.toFixed(0)}/100`, 15, yPos);
+            yPos += 10;
+            doc.text(`Risk Appetite: ${riskAppetite}/100`, 15, yPos);
+        }
+
+        // Add AI Advice
+        yPos += 20;
+        doc.setFontSize(16);
+        doc.text("2. Doctor's Prescription", 10, yPos);
+        yPos += 10;
+        doc.setFontSize(12);
+        advice.forEach((item, index) => {
+            const lines = doc.splitTextToSize(item.text, 180); // 180mm is a good width
+            doc.text(lines, 15, yPos);
+            yPos += (lines.length * 7); // Adjust y position for wrapped text
+        });
+
+        // Save the PDF
+        doc.save("Portfolio_Doctor_Report.pdf");
+        setExportMessage("✅ Report exported successfully! Check your downloads folder.");
+        setTimeout(() => setExportMessage(null), 5000);
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Heart className="text-red-500 h-8 w-8" />
+                <h1 className="text-4xl font-bold text-gray-800">Portfolio Doctor</h1>
+                <Heart className="text-red-500 h-8 w-8" />
+              </div>
+              <p className="text-gray-600 text-lg">Your personal stock advisor in plain English</p>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Left Column - Input */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Add Stocks */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h2 className="text-xl font-semibold mb-4 text-gray-800">Add Stocks to Portfolio</h2>
+                  
+                  {/* Search */}
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search stocks..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Stock dropdown */}
+                  {searchTerm && (
+                    <div className="mb-4 max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                      {filteredStocks.map(stock => (
+                        <div
+                          key={stock}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          onClick={() => {
+                            setSelectedStock(stock);
+                            setSearchTerm(stock);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-medium">{stock}</div>
+                              <div className="text-sm text-gray-500">{currentStockData[stock].sector}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">₹{currentStockData[stock].price}</div>
+                              <div className={`text-sm flex items-center ${currentStockData[stock].trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                {currentStockData[stock].trend === 'up' ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                                {currentStockData[stock].change}%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Quantity input */}
+                  <input
+                    type="number"
+                    placeholder="Quantity"
+                    className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+
+                  <button
+                    onClick={addToPortfolio}
+                    disabled={!selectedStock || !quantity}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Plus className="h-5 w-5" />
+                    Add to Portfolio
+                  </button>
+                </div>
+
+                {/* Risk Appetite */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Risk Appetite</h3>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <span>🛡 Safe</span>
+                      <span>🚀 Aggressive</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={riskAppetite}
+                      onChange={(e) => setRiskAppetite(e.target.value)}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="text-center mt-2 text-sm font-medium text-gray-700">
+                      {riskAppetite < 30 ? '🛡 Conservative' : riskAppetite > 70 ? '🚀 Aggressive' : '⚖ Balanced'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Usage Stats */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Award className={`h-8 w-8 ${badge.color}`} />
+                    <div>
+                      <div className="text-lg font-semibold">{badge.emoji} {badge.text}</div>
+                      <div className="text-sm text-gray-600">{usageStats.portfoliosAnalyzed} analyses done</div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Advices Generated:</span>
+                      <span className="font-medium">{usageStats.advicesGenerated}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Spent:</span>
+                      <span className="font-medium text-green-600">₹{usageStats.totalSpent}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Column - Portfolio & Analysis */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Current Portfolio */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Your Portfolio</h3>
+                  {portfolio.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">Add some stocks to get started!</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {portfolio.map((holding, index) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <div className="font-medium">{holding.stock}</div>
+                            <div className="text-sm text-gray-600">{holding.quantity} shares • {holding.sector}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium">₹{holding.value.toLocaleString()}</div>
+                            <button
+                              onClick={() => removeFromPortfolio(index)}
+                              className="text-red-500 text-sm hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {metrics && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="font-semibold">Total Value:</span>
+                            <span className="text-xl font-bold text-green-600">₹{metrics.totalValue.toLocaleString()}</span>
+                          </div>
+                          <button
+                            onClick={generateAdvice}
+                            disabled={isLoading}
+                            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isLoading && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                            {isLoading ? 'Generating...' : '🩺 Get Health Checkup'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Billing Info */}
+                {showBilling && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="h-5 w-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-800">Billing Summary</span>
+                    </div>
+                    <div className="text-sm text-yellow-700">
+                      <div>Portfolio Analysis: ₹20</div>
+                      <div>Individual Advice: ₹5 each</div>
+                      <div className="font-medium mt-1">Latest charge: ₹{advice.length * 5 + 20}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Advice & Charts */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Doctor's Advice */}
+                {advice.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Doctor's Prescription</h3>
+                      <button
+                        onClick={exportReport}
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export Report
+                      </button>
+                    </div>
+                    
+                    {exportMessage && (
+                      <div className={`border-l-4 p-4 mb-4 ${exportMessage.includes('✅') ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700'}`} role="alert">
+                        <p className="font-bold">Info</p>
+                        <p>{exportMessage}</p>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-3">
+                      {advice.map((item, index) => (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg border-l-4 ${
+                            item.type === 'warning' ? 'bg-red-50 border-red-400' :
+                            item.type === 'success' ? 'bg-green-50 border-green-400' :
+                            'bg-blue-50 border-blue-400'
+                          }`}
+                        >
+                          <p className="text-sm text-gray-700">{item.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sector Distribution Chart */}
+                {metrics && (
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Sector Distribution</h3>
+                    <div className="h-64 flex justify-center items-center">
+                      <div className="text-gray-400">Recharts is not available on CDN. For a full-featured app, use a build system.</div>
+                    </div>
+                    
+                    {/* Health Score */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Diversification Score:</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-3 w-3 rounded-full ${
+                            metrics.diversificationScore > 80 ? 'bg-green-500' :
+                            metrics.diversificationScore > 60 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}></div>
+                          <span className="font-bold">{metrics.diversificationScore.toFixed(0)}/100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<PortfolioDoctor />, document.getElementById('root'));
+</script>
+
+</body>
+</html>
